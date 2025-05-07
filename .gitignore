@@ -365,3 +365,4 @@ FodyWeavers.xsd
 .sarif/
 __vm/
 addLibrary/
+.vscode/
