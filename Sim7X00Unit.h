@@ -17,17 +17,22 @@
 
 using std::size_t;
 
-template <typename T, size_t Size>
+// size_t
+using si = unsigned int;
+
+template <typename T, si Size>
 std::size_t GetArrLength(T (&)[Size])
 {
 	return Size;
 }
 
-template <typename T, size_t N>
+template <typename T, si N>
 void* clear(T (&rg)[N], int value = '\0')
 {
 	return memset(rg, value, N);
 }
+
+constexpr const char* C_OK = "OK";
 
 class Sim7X00Unit
 {
@@ -44,4 +49,5 @@ public:
 	char    SendATCommand2(const char* command, const char* expectedAnswer, const char* expectedAnswer2, unsigned int timeout);
 
 	bool GPSPositioning(Geolocation* geo);
+	bool ReceiveSms();
 };

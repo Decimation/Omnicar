@@ -8,7 +8,6 @@
  */
 
 
-
 #include <avr/wdt.h>
 #include "ApplicationFunctionSet_xxx0.h"
 #include "Sim7X00Unit.h"
@@ -20,7 +19,6 @@ void setup()
 	// pinMode(52, OUTPUT);
 	// digitalWrite(52, HIGH);
 	sim.Init(&Serial1, 53);
-	sim.SendSms("6127876708","Hello");
 
 	// put your setup code here, to run once:
 	Application_FunctionSet.ApplicationFunctionSet_Init();

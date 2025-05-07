@@ -17,10 +17,10 @@ Sim7X00Unit::~Sim7X00Unit()
 bool Sim7X00Unit::Init(HardwareSerial* serial, uint8_t pwrKey)
 {
 	_serial = serial;
-	_serial->begin(115200,SERIAL_8N1);
+	_serial->begin(115200, SERIAL_8N1);
 
 
-	auto answer = SendATCommand("AT", "OK", 2000);
+	auto answer = SendATCommand("AT", C_OK, 2000);
 	if (answer == 0) {
 		Serial.print("Starting up...\n");
 
@@ -32,7 +32,7 @@ bool Sim7X00Unit::Init(HardwareSerial* serial, uint8_t pwrKey)
 
 		// waits for an answer from the module
 		while (answer == 0) {     // Send AT every two seconds and wait for the answer
-			answer = SendATCommand("AT", "OK", 2000);
+			answer = SendATCommand("AT", C_OK, 2000);
 			delay(1000);
 		}
 	}
@@ -51,7 +51,7 @@ bool Sim7X00Unit::SendSms(const char* number, const char* msg)
 	char    aux_string[30];
 
 	// Serial.print("Setting SMS mode...\n");
-	SendATCommand("AT+CMGF=1", "OK", 1000);    // sets the SMS mode to text
+	SendATCommand("AT+CMGF=1", C_OK, 1000);    // sets the SMS mode to text
 	// Serial.print("Sending Short Message\n");
 
 	sprintf(aux_string, "AT+CMGS=\"%s\"", number);
@@ -60,7 +60,7 @@ bool Sim7X00Unit::SendSms(const char* number, const char* msg)
 	if (answer == 1) {
 		_serial->println(msg);
 		_serial->write(0x1A);
-		answer = SendATCommand("", "OK", 20000);
+		answer = SendATCommand("", C_OK, 20000);
 		if (answer == 1) {
 			// Serial.print("Sent successfully \n");
 			return true;
@@ -81,8 +81,8 @@ char Sim7X00Unit::SendATCommand2(const char* command, const char* expectedAnswer
 	char          response[100];
 	unsigned long previous;
 
-	memset(response, '\0', 100);    // Initialize the string
-
+	//memset(response, '\0', 100);    // Initialize the string
+	clear(response);
 	delay(100);
 
 	while (_serial->available() > 0)
@@ -101,12 +101,12 @@ char Sim7X00Unit::SendATCommand2(const char* command, const char* expectedAnswer
 			_serial->print(response[x]);
 			x++;
 			// check if the desired answer 1  is in the response of the module
-			if (strstr(response, expectedAnswer) != NULL) {
+			if (strstr(response, expectedAnswer) != nullptr) {
 				_serial->print("\n");
 				answer = 1;
 			}
 			// check if the desired answer 2 is in the response of the module
-			else if (strstr(response, expectedAnswer2) != NULL) {
+			else if (strstr(response, expectedAnswer2) != nullptr) {
 				_serial->print("\n");
 				answer = 2;
 			}
@@ -170,16 +170,23 @@ bool Sim7X00Unit::GPSPositioning(Geolocation* geo)
 	float   lat = 0;
 	float   log = 0;
 
-	memset(recMessage, '\0', 200);    // Initialize the string
-	memset(latDd, '\0', 3);    // Initialize the string
-	memset(latMm, '\0', 10);    // Initialize the string
-	memset(logDd, '\0', 4);    // Initialize the string
-	memset(logMm, '\0', 10);    // Initialize the string
-	memset(ddMmYy, '\0', 7);    // Initialize the string
-	memset(utcTime, '\0', 7);    // Initialize the string
+	clear(recMessage);
+	clear(latDd);
+	clear(latMm);
+	clear(logMm);
+	clear(ddMmYy);
+	clear(utcTime);
+
+	//memset(recMessage, '\0', 200);    // Initialize the string
+	//memset(latDd, '\0', 3);    // Initialize the string
+	//memset(latMm, '\0', 10);    // Initialize the string
+	//memset(logDd, '\0', 4);    // Initialize the string
+	//memset(logMm, '\0', 10);    // Initialize the string
+	//memset(ddMmYy, '\0', 7);    // Initialize the string
+	//memset(utcTime, '\0', 7);    // Initialize the string
 
 	Serial.print("Start GPS session...\n");
-	SendATCommand("AT+CGPS=1,1", "OK", 1000);    // start GPS session, standalone mode
+	SendATCommand("AT+CGPS=1,1", C_OK, 1000);    // start GPS session, standalone mode
 
 	delay(2000);
 
@@ -196,7 +203,7 @@ bool Sim7X00Unit::GPSPositioning(Geolocation* geo)
 					recMessage[i] = _serial->read();
 					i++;
 					// check if the desired answer (OK) is in the response of the module
-					if (strstr(recMessage, "OK") != nullptr) {
+					if (strstr(recMessage, C_OK) != nullptr) {
 						answer = 1;
 					}
 				}
@@ -208,7 +215,8 @@ bool Sim7X00Unit::GPSPositioning(Geolocation* geo)
 			_serial->print("\n");
 
 			if (strstr(recMessage, ",,,,,,,,") != nullptr) {
-				memset(recMessage, '\0', 200);    // Initialize the string
+				//memset(recMessage, '\0', 200);    // Initialize the string
+				clear(recMessage);
 				i      = 0;
 				answer = 0;
 				delay(1000);
@@ -279,6 +287,48 @@ bool Sim7X00Unit::GPSPositioning(Geolocation* geo)
 	Serial.print(utcTime);
 	Serial.print("\n");*/
 	geo->utc = String(utcTime);
+
+	return true;
+}
+
+bool Sim7X00Unit::ReceiveSms()
+{
+	uint8_t answer = 0;
+	int     i      = 0;
+	char    recMessage[200];
+
+	Serial.print("Setting SMS mode...\n");
+	SendATCommand("AT+CMGF=1", C_OK, 1000);    // sets the SMS mode to text
+	SendATCommand(R"(AT+CPMS="SM","SM","SM")", C_OK, 1000);    // selects the memory
+
+	answer = SendATCommand("AT+CMGR=1", "+CMGR:", 2000);    // reads the first SMS
+
+	if (answer == 1) {
+		answer = 0;
+		while (Serial.available() == 0);
+		// this loop reads the data of the SMS
+		do {
+			// if there are data in the UART input buffer, reads it and checks for the asnwer
+			if (Serial.available() > 0) {
+				recMessage[i] = Serial.read();
+				i++;
+				// check if the desired answer (OK) is in the response of the module
+				if (strstr(recMessage, C_OK) != nullptr) {
+					answer = 1;
+				}
+			}
+		}
+		while (answer == 0);    // Waits for the asnwer with time out
+
+		//       RecMessage[i] = '\0';
+
+		Serial.print(recMessage);
+		Serial.print("\n");
+	} else {
+		Serial.print(answer);
+		Serial.print(" error.\n");
+		return false;
+	}
 
 	return true;
 }
